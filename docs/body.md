@@ -110,6 +110,18 @@ microradians, and the hair test above. Its controls are `flip`, `axes`, `twist` 
 
 ## Not here
 
-Four worlds and the judgement of four parties. A video of the two worlds. A rate for rotation.
+Four worlds and the judgement of four parties. A rate for rotation.
 The stretch and the stilt that make the two skeletons coincide, so the second ANNY has the same
 faults against the muscle skeleton that the first has.
+
+## The video
+
+`tests/body_movie.gd` is not a gate. It runs the same pipeline as the gate, through
+`tests/body_lib.gd`, with a window and the movie writer:
+
+    godot --path <muscle course> --write-movie <out.mkv> --fixed-fps 32 -s <here>/tests/body_movie.gd -- <here> <mujoco.elf> <anny_base.glb> <clips dir> [--control=swap|axes|flip]
+
+The sender is on the left with orange dots on its 21 bodies. The second avatar stands 1.6 m to
+the side, with blue dots where the viewer draws each part, 12 ticks behind. The caption shows the
+largest distance in the frame and the frames refused. Each clip is seen from 8 Hammersley orbit
+views. Four recordings were made, the real run and one for each control, and their files differ.
