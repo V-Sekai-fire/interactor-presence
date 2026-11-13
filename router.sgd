@@ -2,6 +2,7 @@ const SLOTS: int = 4
 const FRAME_BYTES: int = 1200
 const SILENT_TICKS: int = 192
 const SEND_TICKS: int = 6
+const PHASE: Array = [0, 1, 3, 4]
 
 var people: Array = [-1, -1, -1, -1]
 var frames: Array = []
@@ -82,9 +83,8 @@ func frame(viewer: int, k: int) -> PackedByteArray:
 
 func tick() -> int:
 	now += 1
-	var opens: bool = now % SEND_TICKS == 0
 	for s in SLOTS:
-		if opens:
+		if now % SEND_TICKS == PHASE[s]:
 			taken[s * 2] = false
 			taken[s * 2 + 1] = false
 		if people[s] != -1 and now - heard[s] > SILENT_TICKS:

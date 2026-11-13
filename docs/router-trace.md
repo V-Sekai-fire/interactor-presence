@@ -50,7 +50,10 @@ frame and is not a wire format; it is a test file.
 
 A tick `t` of the script is the state where the model's `now` equals `t`. In each tick the
 script does the scripted calls, then calls `tick` once. A send is a tick with `t % 6 == 0`: each
-sending slot puts its two frames, then all four viewers read their six frames.
+sending slot puts its two frames, then all four viewers read their six frames. The script's senders
+all put on that one tick, which the product's senders do not; the router does not ask when a
+sender sends. It takes one pair of frames from a slot in an interval, and the interval of slot `s`
+opens on the tick that makes `now % 6` equal `PHASE[s]`, with `PHASE` 0, 1, 3, 4.
 
 | Tick | What happens | What the model must answer |
 | --- | --- | --- |
@@ -62,11 +65,14 @@ sending slot puts its two frames, then all four viewers read their six frames.
 | 8 | one more put for slot 2, half 1, two ticks after the send | refused and counted |
 | 12 | puts to slot 4 and slot 255, and with half 2 and half 255 | refused and not counted |
 | 12 on | slot 3 stops sending. Its last frames were taken at tick 6 | |
+| 19 | two puts for slot 1, half 0 | the first is taken, because the interval of slot 1 opened at tick 19; the second is refused and counted |
+| 24 | the send | the put for slot 1, half 0 is refused and counted: that half was taken at tick 19 and opens at tick 25 |
 | 24, 30, 36 | slot 0 sends frames of 1,201 and 0, of 1 and 1,199, of 1,220 and 1,472 bytes | taken, and handed out at the length they came |
 | 48 | after the send: leave 9, leave 9, leave 99, `person_at(1)` | true, false, false, -1 |
 | 48 | a put to the empty slot 1 | refused and not counted |
 | 48 | join -1, `person_at(1)`, leave -1 | 1, -1, true: see below |
-| 50 | join 55, then a put for slot 1, half 0 | slot 1; the put is refused and counted, because the half was taken at tick 48 and the leave does not open it |
+| 48 | join 55, then a put for slot 1, half 0 | slot 1; the put is refused and counted, because the half was taken at this tick and a leave does not open it |
+| 50 | join 55 again, `person_at(1)` | 1, 55 |
 | 66 | viewers 4 and 255 read six frames | the frames viewer 3 gets |
 | 66, 186, ... | every 120 ticks, one flood put for slot 2 | refused and counted |
 | 100 | join 30 again | 3, and the silence of slot 3 is not reset |
@@ -80,11 +86,11 @@ sending slot puts its two frames, then all four viewers read their six frames.
 Slot 3 is last heard at tick 6 and is emptied by the tick that makes `now` 199, when
 `now - heard` is 193, the first value above 192.
 
-The script checks 16 items of this table against the answers as it goes. A run that is too short
+The script checks 17 items of this table against the answers as it goes. A run that is too short
 to reach them prints `RESULT: FAIL not covered in <n> ticks:` and the missing items. The shortest
-run that covers all 16 is 205 ticks. `--ticks=210` ends on a whole send interval and gives a file
-of 1,462 records and 1,440,386 bytes; that is the run the entity server commits. The rows from
-tick 600 on are only in longer runs and are not among the 16 items.
+run that covers all 17 is 205 ticks. `--ticks=210` ends on a whole send interval and gives a file
+of 1,467 records and 1,442,817 bytes; that is the run the entity server commits. The rows from
+tick 600 on are only in longer runs and are not among the 17 items.
 
 The calls do not depend on the answers. A planted model is asked the same calls as the true one.
 
@@ -120,10 +126,11 @@ prints `RESULT: FAIL the control <name> first differs from the model at record <
 | --- | --- | --- |
 | `flip` | `frame` flips one bit of byte 777 of slot 1's first frame | 5, a `frame` |
 | `flood` | `put` takes every frame, so a flood replaces the first frame and is not counted | 91, a `put` |
-| `silent` | a slot is emptied one tick early, at 192 silent ticks | 1345, a `person_at` |
+| `silent` | a slot is emptied one tick early, at 192 silent ticks | 1350, a `person_at` |
 | `order` | a viewer gets the slots after its own in the wrong order | 47, a `frame` |
+| `phase` | every slot opens on tick 0 of the six, as before the slots were spread | 203, a `put` |
 
-A relay that agrees with the true model must fail on each of these four files, at the record in
+A relay that agrees with the true model must fail on each of these five files, at the record in
 the table. The C replay check does.
 
 `tools/gates.exs` runs the script at 210 ticks, once as it is and once for each control, and

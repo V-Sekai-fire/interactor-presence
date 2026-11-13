@@ -31,7 +31,10 @@ the frame the guest sees.
 
 ## `tests/byz_gate.gd [-- --ticks=N] [--keys=<dir>] [--control=<name>]`
 
-Four scripted clients, in slots 0 to 3, each send 21 synthetic Packets every 6 ticks. The first
+Four scripted clients, in slots 0 to 3, each send 21 synthetic Packets every 6 ticks. They do not
+send on the same tick: slot `s` sends on the ticks where `t % 6` is `PHASE[s]`, and `PHASE` is
+0, 1, 3, 4, so no two senders share a tick and no tick has more than two frames for one viewer. The
+router opens a slot for its next pair of frames on that same tick of the six. The first
 half of a run stands still and the second half walks. Without `--ticks` a run is 19,200 ticks,
 5 minutes of the clock.
 
@@ -41,8 +44,11 @@ four, whose members are the gate's four people; the sha256 of each file is in th
 `docs/zone-tables.md`.
 
 Without a control the gate passes when every verdict from the second send on is valid, nothing
-is refused or forged, the router's source has no `decode_` call, and 28,800 bytes are relayed at every
-send, still or walking.
+is refused or forged, the router's source has no `decode_` call, 28,800 bytes are relayed in every
+interval of 6 ticks, still or walking, no viewer is handed more than two frames on one tick, and the
+newest first frame a viewer holds of each sender is never more than 6 ticks old. The last two are
+the queueing rules: arrivals are spread, and no stage keeps a line. The gate prints both measures
+(`arrivals_per_tick`, `age_ticks`) and each stage's share of a 15.625 ms tick.
 
 A control is planted from tick 600. The zone's controls replace one line of `router.sgd` before
 it is compiled, and the viewer's control does the same to `observer.sgd` for slot 2 only.
@@ -59,9 +65,13 @@ it is compiled, and the viewer's control does the same to `observer.sgd` for slo
 | `halves` | the sender in slot 3 takes its second frame from the send before | `sender:3` |
 | `size` | the sender in slot 3 sends a first frame of 1,201 bytes | `refused` |
 | `header` | the sender in slot 3 puts 20 bytes before its Packets | `refused` |
+| `sametick` | every slot sends on tick 0 of the six | `bunched` |
+| `fifo` | the zone keeps a line of two and hands on the older frame | `queued` |
 
 The gate prints one `NAMED` line for each kind of verdict that was not valid, with the count of
-sends, then the party the honest majority names.
+sends, then the party the honest majority names. The names are tried in this order: a router
+that reads, a refused frame, a forged tag, bunched arrivals, an old frame, and then the verdicts. A
+refused frame is never counted as held, so its age is not measured.
 
 The `leak` control does not name the relay. It shows what a leaked key costs: the forged frame
 passes its tag, only viewer 0's hash differs, and the other three name viewer 0.
@@ -76,7 +86,7 @@ See `docs/replica.md`.
 ## `tests/router_trace.gd -- <out file> [--ticks=N] [--control=<name>]`
 
 Writes every call to `router.sgd` and every answer of one scripted scenario to a binary file, for
-a relay in another language to replay. It passes when the scenario reached all 16 of its items.
-The controls `flip`, `flood`, `silent` and `order` each replace one line of the router; the script
+a relay in another language to replay. It passes when the scenario reached all 17 of its items.
+The controls `flip`, `flood`, `silent`, `order` and `phase` each replace one line of the router; the script
 runs the true router beside the planted one and names the first record where they differ. The
 file format, the scenario and the controls are in `docs/router-trace.md`.
