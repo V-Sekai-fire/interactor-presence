@@ -8,6 +8,8 @@ const OFF_HLC: int = 40
 const OFF_PAYLOAD: int = 58
 const FIRST_DUMMY: int = 9
 const HASH_BYTES: int = 16
+const TAG_BYTES: int = 8
+const TAG_AREA: int = 24
 
 const VALID: int = 0
 const INCOMPLETE: int = 1
@@ -24,6 +26,8 @@ var got_ok: Array = []
 var echoes: Array = []
 var self_hash: PackedByteArray = PackedByteArray()
 var refused: int = 0
+var forged: Array = [0, 0, 0]
+var key_hex: Array = ["", "", ""]
 
 
 func _slot_of(other: int) -> int:
@@ -59,6 +63,37 @@ func _hash(a: PackedByteArray, b: PackedByteArray) -> PackedByteArray:
 	return both.hex_encode().sha256_buffer().slice(0, HASH_BYTES)
 
 
+func keys(a: PackedByteArray, b: PackedByteArray, c: PackedByteArray) -> bool:
+	key_hex = [a.hex_encode(), b.hex_encode(), c.hex_encode()]
+	forged = [0, 0, 0]
+	return a.size() == 32 and b.size() == 32 and c.size() == 32
+
+
+func _tag_at(half: int) -> int:
+	if half == 0:
+		return 3 * PACKET_BYTES + OFF_PAYLOAD
+	return OFF_PAYLOAD
+
+
+func _tag(key: String, frame: PackedByteArray, half: int) -> PackedByteArray:
+	var plain: PackedByteArray = frame.duplicate()
+	var at: int = _tag_at(half)
+	for i in TAG_AREA:
+		plain[at + i] = 0
+	var inner: PackedByteArray = (key + plain.hex_encode()).sha256_buffer()
+	return (key + inner.hex_encode()).sha256_buffer().slice(0, TAG_BYTES)
+
+
+func _tagged(frame: PackedByteArray, half: int) -> PackedByteArray:
+	var out: PackedByteArray = frame.duplicate()
+	var at: int = _tag_at(half)
+	for d in 3:
+		var tag: PackedByteArray = _tag(key_hex[d], frame, half)
+		for i in TAG_BYTES:
+			out[at + d * TAG_BYTES + i] = tag[i]
+	return out
+
+
 func seal(first: PackedByteArray, second: PackedByteArray, tick: int) -> PackedByteArray:
 	var out: PackedByteArray = second
 	for d in 3:
@@ -73,8 +108,10 @@ func seal(first: PackedByteArray, second: PackedByteArray, tick: int) -> PackedB
 			for i in HASH_BYTES:
 				out[at + OFF_PAYLOAD + 16 + i] = self_hash[i]
 		out.encode_u32(at + OFF_PAYLOAD + 32, tick)
-	self_hash = _hash(first, out)
-	return out
+	var a: PackedByteArray = _tagged(first, 0)
+	var b: PackedByteArray = _tagged(out, 1)
+	self_hash = _hash(a, b)
+	return a + b
 
 
 func take(k: int, frame: PackedByteArray) -> bool:
@@ -95,6 +132,11 @@ func take(k: int, frame: PackedByteArray) -> bool:
 		if gid != want:
 			refused += 1
 			return false
+	var o: int = k / 2
+	var at: int = _tag_at(half) + _other_of(me, slot) * TAG_BYTES
+	if frame.slice(at, at + TAG_BYTES) != _tag(key_hex[o], frame, half):
+		forged[o] += 1
+		return false
 	got_ok[k] = true
 	return true
 
@@ -170,3 +212,7 @@ func close(tick: int) -> PackedInt32Array:
 
 func refused_count() -> int:
 	return refused
+
+
+func forged_counts() -> PackedInt32Array:
+	return PackedInt32Array([forged[0], forged[1], forged[2]])

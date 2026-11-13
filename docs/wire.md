@@ -72,6 +72,35 @@ The verdict codes:
 A verdict arrives one send after the frames it judges, because the hashes of a send travel in
 the next one.
 
+## Tags under the pairwise keys
+
+Each pair of members holds a 32-byte key that the home server gives to those two and to nobody
+else. The relay holds none. Every frame carries one 8-byte tag for each of its three viewers, in
+the payload of one named Packet of that frame, and never the head's:
+
+| Frame | The Packet that carries the tags | Payload bytes |
+| --- | --- | --- |
+| first | Packet 3, the pelvis | 0 to 23 |
+| second | Packet 0, part 12 | 0 to 23 |
+
+The tag for the `d`-th other slot is at payload bytes `8 * d` to `8 * d + 7`. A tag is the first
+8 bytes of `H(key, H(key, frame))`, where `H(key, x)` is SHA-256 over the hex text of the key
+followed by the hex text of `x`, and the frame is taken with its 24 tag bytes at zero. It is a
+keyed hash in two passes built from the one hash a SafeGDScript guest can reach. It is not HMAC.
+
+`keys(a, b, c)` gives an observer its three keys, in the order of the other slots. `seal` now
+answers both frames joined, the first with its tags and then the second with its hashes and its
+tags, 2,400 bytes for a whole send. `take` checks the tag for this viewer after the size and the
+`gid`, and a frame whose tag is wrong is dropped and counted in `forged_counts()`, one count for
+each other slot. The hashes that observers echo are taken over the frames with their tags.
+
+A relay that alters a frame cannot make its tag, so the viewer drops the frame as forged. Two
+limits remain. A sender can write a wrong tag for one viewer only, and that viewer then sees a
+forged frame where the others see a valid one; from the viewer's side that cannot be told from a
+relay that altered the frame. And a relay that is handed one pair key can alter a frame for that
+one viewer under a valid tag. The hashes then differ at that viewer alone, so the honest majority
+names the viewer and not the relay. A leaked key lets the relay frame a member.
+
 ## What the checks do not show
 
 They show that every viewer was told the same thing, and that each Packet is the part its slot

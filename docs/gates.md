@@ -29,14 +29,19 @@ A guest takes SHA-256 of a frame's hex text and the engine's 32-bit hash, and ea
 compared with the host's. The gate prints the cost of each call. The control flips one bit of
 the frame the guest sees.
 
-## `tests/byz_gate.gd [-- --ticks=N] [--control=<name>]`
+## `tests/byz_gate.gd [-- --ticks=N] [--keys=<dir>] [--control=<name>]`
 
 Four scripted clients, in slots 0 to 3, each send 21 synthetic Packets every 6 ticks. The first
 half of a run stands still and the second half walks. Without `--ticks` a run is 19,200 ticks,
 5 minutes of the clock.
 
+The pairwise keys are read from `testdata/zone-fixture`, or from `--keys`. That directory is
+what `mix uro.zone_tables --fixture` of `contract-zone-backend` writes for its fixed zone of
+four, whose members are the gate's four people; the sha256 of each file is in that repository's
+`docs/zone-tables.md`.
+
 Without a control the gate passes when every verdict from the second send on is valid, nothing
-is refused, the router's source has no `decode_` call, and 28,800 bytes are relayed at every
+is refused or forged, the router's source has no `decode_` call, and 28,800 bytes are relayed at every
 send, still or walking.
 
 A control is planted from tick 600. The zone's controls replace one line of `router.sgd` before
@@ -44,8 +49,10 @@ it is compiled, and the viewer's control does the same to `observer.sgd` for slo
 
 | Control | What is planted | The party that must be named |
 | --- | --- | --- |
-| `alter` | the zone flips one bit of slot 1's first frame, the same for every viewer | `sender-or-zone:1` |
-| `split` | the zone flips different bits of that frame for viewers 0 and 2 and none for viewer 3 | `zone:1` |
+| `alter` | the zone flips one bit of slot 1's first frame, the same for every viewer | `forged:1` |
+| `split` | the zone flips different bits of that frame for viewers 0 and 2 and none for viewer 3 | `forged:1` |
+| `leak` | the zone is handed the key of slots 1 and 0, flips a bit of slot 1's first frame for viewer 0 and writes a valid tag | `viewer:0` |
+| `halftag` | the sender in slot 3 writes a wrong tag for viewer 0 only | `forged:3` |
 | `swap` | the zone hands viewer 0 the frames of slots 1 and 2 in each other's place | `refused` |
 | `decode` | the zone reads a `gid` | `router-reads` |
 | `stale` | viewer 2 keeps an old first frame of slot 0 | `viewer:2` |
@@ -56,8 +63,11 @@ it is compiled, and the viewer's control does the same to `observer.sgd` for slo
 The gate prints one `NAMED` line for each kind of verdict that was not valid, with the count of
 sends, then the party the honest majority names.
 
-Measured on macOS arm64 with the interpreted tier: the router's pass with the wire takes about
-46 microseconds a tick, and the four observers together about 0.8 ms a send.
+The `leak` control does not name the relay. It shows what a leaked key costs: the forged frame
+passes its tag, only viewer 0's hash differs, and the other three name viewer 0.
+
+Measured on macOS arm64 with the interpreted tier: the four observers together take about 1.7 ms
+a send with tags, and 0.8 ms without.
 
 ## `tests/replica_gate.gd`
 
