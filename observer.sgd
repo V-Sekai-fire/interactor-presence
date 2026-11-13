@@ -1,0 +1,194 @@
+## One client's check of what the router hands it. It hashes each other sender's two frames,
+## states those hashes in the three dummy Packets of its own second frame, and judges a sender's
+## tick from four reports: the sender's own hash, its own, and the two other viewers'.
+##
+## A frame is 12 Packets of 100 bytes. A person's first frame is parts 0 to 11 and the second is
+## parts 12 to 20 and three dummy Packets, whose 42 payload bytes hold, by this table:
+##   0..15   the hash this client took of one other sender's frames (dummy d: the d-th other slot)
+##   16..31  in dummy 0 only: the hash of this client's own frames
+##   32..35  the tick of the frame that carries them; the hashes are of the tick before
+## A dummy Packet's native fields are all zero.
+
+const SLOTS: int = 4
+const PACKET_BYTES: int = 100
+const FRAME_PACKETS: int = 12
+const FRAME_BYTES: int = 1200
+const PARTS: int = 21
+const PLAYER_ENTITY_BASE: int = 2000000
+const OFF_HLC: int = 40
+const OFF_PAYLOAD: int = 58
+const FIRST_DUMMY: int = 9
+const HASH_BYTES: int = 16
+
+const VALID: int = 0
+const INCOMPLETE: int = 1
+const SENDER: int = 2
+const SENDER_OR_ZONE: int = 3
+const ZONE: int = 4
+const ME: int = 5
+const VIEWER: int = 10
+
+var me: int = 0
+var people: Array = [-1, -1, -1, -1]
+var got: Array = []
+var got_ok: Array = []
+## This client's hashes of each other sender's frames of the last tick it closed, and of its own
+## frames of the last tick it sealed.
+var echoes: Array = []
+var self_hash: PackedByteArray = PackedByteArray()
+var refused: int = 0
+
+
+func _slot_of(other: int) -> int:
+	if other >= me:
+		return other + 1
+	return other
+
+
+func _other_of(slot: int, viewer: int) -> int:
+	if slot > viewer:
+		return slot - 1
+	return slot
+
+
+func setup(slot: int, a: int, b: int, c: int, d: int) -> bool:
+	me = slot
+	people = [a, b, c, d]
+	got = []
+	got_ok = []
+	echoes = []
+	for i in 6:
+		got.append(PackedByteArray())
+		got_ok.append(false)
+	for i in 3:
+		echoes.append(PackedByteArray())
+	self_hash = PackedByteArray()
+	refused = 0
+	return true
+
+
+func _hash(a: PackedByteArray, b: PackedByteArray) -> PackedByteArray:
+	var both: PackedByteArray = a + b
+	return both.hex_encode().sha256_buffer().slice(0, HASH_BYTES)
+
+
+## The second frame with its three dummy Packets written: the hashes of the tick before, which is
+## the newest tick this client has closed. It also takes this client's own hash for `tick`.
+func seal(first: PackedByteArray, second: PackedByteArray, tick: int) -> PackedByteArray:
+	var out: PackedByteArray = second
+	for d in 3:
+		var at: int = (FIRST_DUMMY + d) * PACKET_BYTES
+		for i in PACKET_BYTES:
+			out[at + i] = 0
+		var echo: PackedByteArray = echoes[d]
+		if echo.size() == HASH_BYTES:
+			for i in HASH_BYTES:
+				out[at + OFF_PAYLOAD + i] = echo[i]
+		if d == 0 and self_hash.size() == HASH_BYTES:
+			for i in HASH_BYTES:
+				out[at + OFF_PAYLOAD + 16 + i] = self_hash[i]
+		out.encode_u32(at + OFF_PAYLOAD + 32, tick)
+	self_hash = _hash(first, out)
+	return out
+
+
+## One frame from the router: frame k of 6. A frame of another size, or a Packet that is not the
+## part this sender's slot must send in that place, is refused and counted.
+func take(k: int, frame: PackedByteArray) -> bool:
+	got_ok[k] = false
+	got[k] = frame
+	if frame.size() != FRAME_BYTES:
+		refused += 1
+		return false
+	var slot: int = _slot_of(k / 2)
+	var half: int = k % 2
+	var person: int = people[slot]
+	for p in FRAME_PACKETS:
+		var gid: int = frame.decode_u32(p * PACKET_BYTES)
+		var part: int = half * FRAME_PACKETS + p
+		var want: int = 0
+		if part < PARTS:
+			want = PLAYER_ENTITY_BASE + person * PARTS + part
+		if gid != want:
+			refused += 1
+			return false
+	got_ok[k] = true
+	return true
+
+
+func _same(a: PackedByteArray, b: PackedByteArray) -> bool:
+	return a.size() == HASH_BYTES and a == b
+
+
+## After the six frames of `tick`: takes this client's hashes of them, and judges the tick before
+## for each other sender. The answer is three verdicts, in the order of the other slots.
+func close(tick: int) -> PackedInt32Array:
+	var verdicts: PackedInt32Array = PackedInt32Array([INCOMPLETE, INCOMPLETE, INCOMPLETE])
+	for o in 3:
+		var slot: int = _slot_of(o)
+		var first: PackedByteArray = got[o * 2]
+		var second: PackedByteArray = got[o * 2 + 1]
+		if not got_ok[o * 2] or not got_ok[o * 2 + 1]:
+			continue
+		# The four reports about this sender's frames of the tick before.
+		var at0: int = FIRST_DUMMY * PACKET_BYTES + OFF_PAYLOAD
+		if second.decode_u32(at0 + 32) != tick:
+			continue
+		var said: PackedByteArray = second.slice(at0 + 16, at0 + 16 + HASH_BYTES)
+		var own: PackedByteArray = echoes[o]
+		var seen: Array = []
+		var who: Array = []
+		var whole: bool = true
+		for v in 3:
+			var vslot: int = _slot_of(v)
+			if vslot == slot:
+				continue
+			if not got_ok[v * 2 + 1]:
+				whole = false
+				continue
+			var theirs: PackedByteArray = got[v * 2 + 1]
+			var d: int = _other_of(slot, vslot)
+			var at: int = (FIRST_DUMMY + d) * PACKET_BYTES + OFF_PAYLOAD
+			if theirs.decode_u32(at + 32) != tick:
+				whole = false
+				continue
+			seen.append(theirs.slice(at, at + HASH_BYTES))
+			who.append(vslot)
+		if not whole or seen.size() != 2 or own.size() != HASH_BYTES:
+			continue
+		var a: PackedByteArray = seen[0]
+		var b: PackedByteArray = seen[1]
+		var sm: bool = _same(said, own)
+		var sa: bool = _same(said, a)
+		var sb: bool = _same(said, b)
+		if sm and sa and sb:
+			verdicts[o] = VALID
+		elif _same(own, a) and _same(own, b):
+			verdicts[o] = SENDER_OR_ZONE
+		elif sm and sa:
+			verdicts[o] = VIEWER + who[1]
+		elif sm and sb:
+			verdicts[o] = VIEWER + who[0]
+		elif sa and sb:
+			verdicts[o] = ME
+		else:
+			verdicts[o] = ZONE
+	# The halves of one tick carry one tick, and it is this one.
+	for o in 3:
+		if got_ok[o * 2] and got_ok[o * 2 + 1]:
+			var f0: PackedByteArray = got[o * 2]
+			var f1: PackedByteArray = got[o * 2 + 1]
+			var t0: int = f0.decode_u32(OFF_HLC) >> 8
+			var t1: int = f1.decode_u32(OFF_HLC) >> 8
+			if t0 != t1 or t0 != tick:
+				verdicts[o] = SENDER
+	# The hashes of this tick, which the next seal states and the next close judges with.
+	for o in 3:
+		echoes[o] = PackedByteArray()
+		if got_ok[o * 2] and got_ok[o * 2 + 1]:
+			echoes[o] = _hash(got[o * 2], got[o * 2 + 1])
+	return verdicts
+
+
+func refused_count() -> int:
+	return refused
