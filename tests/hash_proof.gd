@@ -1,9 +1,5 @@
 extends SceneTree
 
-## Proof of which hash a SafeGDScript guest can take of a 1,200-byte frame, with its cost.
-##   godot --headless --path . -s tests/hash_proof.gd [-- --control=flip]
-## Each call's answer is compared with the same hash taken by the host. The control flips one bit
-## of the frame the guest sees, so no answer matches.
 
 const SOURCE := "res://proof/hash.sgd"
 const REPEATS := 4000

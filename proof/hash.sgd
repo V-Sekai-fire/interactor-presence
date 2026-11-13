@@ -1,14 +1,10 @@
-## Which hash of a 1,200-byte frame a SafeGDScript guest can take, and at what cost.
-
 func nop(frame: PackedByteArray) -> int:
 	return 0
 
 
-## SHA-256 of the frame's hex text, as 32 bytes.
 func sha_hex(frame: PackedByteArray) -> PackedByteArray:
 	return frame.hex_encode().sha256_buffer()
 
 
-## The engine's 32-bit hash of the value.
 func hash32(frame: PackedByteArray) -> int:
 	return hash(frame)

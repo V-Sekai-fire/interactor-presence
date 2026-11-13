@@ -1,11 +1,3 @@
-# Copyright (c) 2026 K. S. Ernest (iFire) Lee
-# SPDX-License-Identifier: MIT
-#
-# Runs every gate once as it is and once for each of its controls.
-#   GODOT=<double-precision editor with the sandbox built in> elixir tools/gates.exs
-# A gate as it is must print "RESULT: PASS". A control must print "RESULT: FAIL" and must not
-# print "RESULT: ERROR", which a gate prints when the party it named is not the one planted.
-# The exit code of the engine is not trusted alone: a script that fails to parse exits 0.
 defmodule Gates do
   @gates [
     {"tests/proof_gate.gd", [:golden], ["--control=flip"]},
@@ -48,7 +40,6 @@ defmodule Gates do
     out |> String.split("\n") |> Enum.filter(&String.starts_with?(&1, "RESULT:")) |> List.last() || "no RESULT line"
   end
 
-  # The engine's whole output. A run that outlives the timeout is killed and reads as no result.
   defp engine(godot, args) do
     port = Port.open({:spawn_executable, godot}, [:binary, :exit_status, :stderr_to_stdout, args: args])
     {:os_pid, pid} = Port.info(port, :os_pid)

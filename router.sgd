@@ -1,7 +1,3 @@
-## The zone as a router. It holds four slots and hands each slot the latest two frames of the
-## other three, as they came. It reads no byte of a frame: what a frame says is for the viewers.
-## Its pass runs at every tick of 64 per second. A slot sends once every SEND_TICKS ticks.
-
 const SLOTS: int = 4
 const FRAME_BYTES: int = 1200
 const SILENT_TICKS: int = 192
@@ -34,7 +30,6 @@ func reset() -> bool:
 	return true
 
 
-## The slot the person holds, or -1 when the zone is full.
 func join(person: int) -> int:
 	for s in SLOTS:
 		if people[s] == person:
@@ -61,8 +56,6 @@ func person_at(slot: int) -> int:
 	return people[slot]
 
 
-## One frame of one half from a slot. Only the first of a half in a send interval is taken; the
-## rest are counted and not read.
 func put(slot: int, half: int, frame: PackedByteArray) -> bool:
 	if slot < 0 or slot >= SLOTS or half < 0 or half > 1:
 		return false
@@ -78,8 +71,6 @@ func put(slot: int, half: int, frame: PackedByteArray) -> bool:
 	return true
 
 
-## Frame k of 6 for a viewer: the two halves of each other slot, in slot order. An empty slot
-## gives the blank frame.
 func frame(viewer: int, k: int) -> PackedByteArray:
 	var other: int = k / 2
 	var half: int = k % 2
@@ -89,7 +80,6 @@ func frame(viewer: int, k: int) -> PackedByteArray:
 	return frames[slot * 2 + half]
 
 
-## The same pass whoever is present: every slot is visited, and a slot silent for 3 s is emptied.
 func tick() -> int:
 	now += 1
 	var opens: bool = now % SEND_TICKS == 0

@@ -1,8 +1,5 @@
 extends SceneTree
 
-## Proof that a SafeGDScript guest reads the gid of an entity packet, two ways, on every golden row.
-##   godot --headless --path . -s tests/proof_gate.gd -- <packet_golden.csv> [--control=flip]
-## The control flips one bit of byte 0 before the call, so the gid no longer matches the row.
 
 const SOURCE := "res://proof/gid.sgd"
 const CALLS := ["gid_decode", "gid_bytes"]

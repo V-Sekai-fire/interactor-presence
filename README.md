@@ -49,6 +49,13 @@ behind a 20-byte header. Without `--ticks` it runs 5 minutes of the clock.
 No continuous integration runs these yet: no release publishes a Linux build of the editor they
 need.
 
+## Documentation
+
+`docs/wire.md` describes the frames, every call of the two guests and the verdict codes.
+`docs/gates.md` describes each gate and each control. The source keeps its comments under 3% of
+its lines, which `tools/comment_density.exs` checks, so these two pages are where the
+explanation is.
+
 ## Licence
 
 MIT; see `LICENSE`.

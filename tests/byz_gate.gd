@@ -1,25 +1,14 @@
 extends SceneTree
 
-## Gate for the router-only zone and its four observers.
-##   godot --headless --path . -s tests/byz_gate.gd [-- --ticks=N] [--control=<name>]
-## Four scripted clients each send 21 synthetic Packets every 6 ticks as two frames of 12. The router
-## relays; each client's observer hashes what it gets, states the hashes in its three dummy
-## Packets, and judges every other sender's last tick from four reports.
-## Without a control: every verdict from the second send on is VALID, nothing is refused, the router's
-## source has no decode call, and the bytes relayed per send are equal for a still and a moving
-## half of the run. With a control: the planted party must be the one named.
-## Controls: alter, split, swap, decode (the zone); stale (viewer 2); halves, size, header
-## (the sender in slot 3).
 
 const SLOTS := 4
 const PARTS := 21
 const BASE := 2000000
 const PEOPLE := [7, 9, 12, 30]
 const SEND_TICKS := 6
-const PLANT_AT := 600  # a tick; send 100
+const PLANT_AT := 600
 const CODES := {0: "valid", 1: "incomplete", 2: "sender", 3: "sender-or-zone", 4: "zone", 5: "me"}
 
-## name: [file, text in the source, text that replaces it, the party that must be named]
 const PLANTS := {
 	"alter": ["router", "\treturn frames[slot * 2 + half]\n", "\tvar out: PackedByteArray = frames[slot * 2 + half].duplicate()\n\tif slot == 1 and half == 0 and now >= 600:\n\t\tout[777] = out[777] ^ 1\n\treturn out\n", "sender-or-zone:1"],
 	"split": ["router", "\treturn frames[slot * 2 + half]\n", "\tvar out: PackedByteArray = frames[slot * 2 + half].duplicate()\n\tif slot == 1 and half == 0 and now >= 600 and viewer != 3:\n\t\tout[777] = out[777] ^ (1 + viewer)\n\treturn out\n", "zone:1"],
@@ -53,7 +42,6 @@ func _build(file: String, control: String) -> Object:
 	return sb
 
 
-## One synthetic Packet: every native field set, the payload zero.
 func _packet(person: int, part: int, tick: int, moving: bool) -> PackedByteArray:
 	var p := PackedByteArray()
 	p.resize(100)
@@ -128,7 +116,6 @@ func _init() -> void:
 			router_usec += Time.get_ticks_usec() - tr
 			continue
 		sends += 1
-		# The first half of the run stands still and the second half walks.
 		var moving: bool = t >= ticks / 2
 		var t0 := Time.get_ticks_usec()
 		for s in SLOTS:
@@ -204,7 +191,6 @@ func _init() -> void:
 	print("BYZ ticks=%d sends=%d judged=%d valid=%d refused=%d router_reads=%s bytes_per_send still=%d moving=%d" % [ticks, sends, judged, valid, refused, str(reads), bytes_still, bytes_moving])
 	print("BYZ usec: router with the wire %.1f per tick, four observers %.1f per send" % [float(router_usec) / ticks, float(observer_usec) / sends])
 
-	# The party the honest majority names.
 	var named := "nobody"
 	if reads:
 		named = "router-reads"
