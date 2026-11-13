@@ -79,6 +79,12 @@ passes its tag, only viewer 0's hash differs, and the other three name viewer 0.
 Measured on macOS arm64 with the interpreted tier: the four observers together take about 1.7 ms
 a send with tags, and 0.8 ms without.
 
+## `tests/curve_gate.gd [-- --control=<name>]`
+
+Curve playback between sends, on synthetic control points: the error against the `T^4 / 384`
+bound at 6, 8 and 16 ticks, and the largest move in a tick after one, two and three lost sends.
+The controls are `snap` and `novel`. See `docs/curve.md`.
+
 ## `tests/replica_gate.gd`
 
 See `docs/replica.md`.

@@ -1,0 +1,129 @@
+const POINT: int = 7
+const QUEUE: int = 4
+const KEY: int = 44
+
+var keys: int = 0
+var coast: float = 12.0
+var view: float = 0.0
+var state: PackedFloat64Array = PackedFloat64Array()
+var joins: int = 0
+
+
+func reset(count: int, coast_ticks: float) -> bool:
+	keys = count
+	coast = coast_ticks
+	view = 0.0
+	joins = 0
+	state = PackedFloat64Array()
+	state.resize(count * KEY)
+	return true
+
+
+func advance(tick: float) -> float:
+	view = tick
+	for k in keys:
+		_roll(k * KEY)
+	return view
+
+
+func _roll(at: int) -> void:
+	var have: int = int(state[at])
+	var queued: int = int(state[at + 1])
+	while have == 2 and queued > 0 and view >= state[at + 2 + POINT]:
+		for i in POINT:
+			state[at + 2 + i] = state[at + 2 + POINT + i]
+			state[at + 2 + POINT + i] = state[at + 2 + 2 * POINT + i]
+		for i in (QUEUE - 1) * POINT:
+			state[at + 2 + 2 * POINT + i] = state[at + 2 + 3 * POINT + i]
+		queued -= 1
+	state[at + 1] = float(queued)
+
+
+func _eval(at: int) -> PackedFloat64Array:
+	var out: PackedFloat64Array = PackedFloat64Array()
+	out.resize(6)
+	var have: int = int(state[at])
+	if have == 0:
+		return out
+	var a: int = at + 2
+	var b: int = a + POINT
+	if have == 1:
+		for i in 3:
+			out[i] = state[a + 1 + i]
+		return out
+	var t0: float = state[a]
+	var t1: float = state[b]
+	if view >= t1:
+		var over: float = minf(view - t1, coast)
+		for i in 3:
+			out[i] = state[b + 1 + i] + state[b + 4 + i] * over
+			if view - t1 < coast:
+				out[3 + i] = state[b + 4 + i]
+		return out
+	var span: float = t1 - t0
+	var s: float = clampf((view - t0) / span, 0.0, 1.0)
+	var s2: float = s * s
+	var s3: float = s2 * s
+	var h00: float = 2.0 * s3 - 3.0 * s2 + 1.0
+	var h10: float = s3 - 2.0 * s2 + s
+	var h01: float = -2.0 * s3 + 3.0 * s2
+	var h11: float = s3 - s2
+	var d00: float = (6.0 * s2 - 6.0 * s) / span
+	var d10: float = 3.0 * s2 - 4.0 * s + 1.0
+	var d01: float = (-6.0 * s2 + 6.0 * s) / span
+	var d11: float = 3.0 * s2 - 2.0 * s
+	for i in 3:
+		var p0: float = state[a + 1 + i]
+		var v0: float = state[a + 4 + i]
+		var p1: float = state[b + 1 + i]
+		var v1: float = state[b + 4 + i]
+		out[i] = h00 * p0 + h10 * span * v0 + h01 * p1 + h11 * span * v1
+		out[3 + i] = d00 * p0 + d10 * v0 + d01 * p1 + d11 * v1
+	return out
+
+
+func put(key: int, tick: float, px: float, py: float, pz: float, vx: float, vy: float, vz: float) -> bool:
+	if key < 0 or key >= keys:
+		return false
+	var at: int = key * KEY
+	var have: int = int(state[at])
+	var queued: int = int(state[at + 1])
+	var point: PackedFloat64Array = PackedFloat64Array([tick, px, py, pz, vx, vy, vz])
+	if have == 0:
+		for i in POINT:
+			state[at + 2 + i] = point[i]
+		state[at] = 1.0
+		return true
+	var last: int = at + 2 + (have - 1 + queued) * POINT
+	if tick <= state[last]:
+		return false
+	if have == 1:
+		for i in POINT:
+			state[at + 2 + POINT + i] = point[i]
+		state[at] = 2.0
+		return true
+	if queued == 0 and view >= state[at + 2 + POINT]:
+		var now: PackedFloat64Array = _eval(at)
+		state[at + 2] = view
+		for i in 6:
+			state[at + 3 + i] = now[i]
+		for i in POINT:
+			state[at + 2 + POINT + i] = point[i]
+		joins += 1
+		return true
+	if queued == QUEUE:
+		return false
+	for i in POINT:
+		state[at + 2 + (2 + queued) * POINT + i] = point[i]
+	state[at + 1] = float(queued + 1)
+	return true
+
+
+func drawn(key: int) -> PackedFloat64Array:
+	if key < 0 or key >= keys:
+		return PackedFloat64Array()
+	return _eval(key * KEY)
+
+
+func joined() -> int:
+	return joins
