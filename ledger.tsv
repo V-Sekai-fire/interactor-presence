@@ -6,3 +6,4 @@ rung	date	change	number	before	after	end	note
 1	2026-11-13	one body crosses the wire	largest difference of a drawn part's rotation, milliradians	none	185		rotation has no rate on the wire
 1	2026-11-13	one body crosses the wire	share of a tick for codec, router, observers, curve and second follower	none	0.030	0.8 for the whole tick	interpreted tier, this Mac; leaves out the sender's physics
 1	2026-11-13	positions from a whole-number origin	largest error of a position 8 billion km from zero, micrometres	1230	0.82	under 17, a hair	tests/packets_gate.gd; before is the float control
+1	2026-11-13	one body crosses the wire	largest distance between the points of a drawn part's rotation star and the sender's, mm	none	14.6		arms of 5 cm; mean 0.29 mm; position and rotation in one number

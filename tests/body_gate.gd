@@ -2,6 +2,8 @@ extends SceneTree
 
 
 const TICK_USEC := 15625.0
+const ARM := 0.05
+const AXES := [Vector3.RIGHT, Vector3.LEFT, Vector3.UP, Vector3.DOWN, Vector3.BACK, Vector3.FORWARD]
 
 
 func _end(line: String, code: int) -> void:
@@ -45,6 +47,8 @@ func _initialize() -> void:
 	var worst_mm := 0.0
 	var sum_mm := 0.0
 	var worst_turn := 0.0
+	var worst_star := 0.0
+	var sum_star := 0.0
 	var compared := 0
 	var ticks_done := 0
 	for clip in clips:
@@ -61,12 +65,19 @@ func _initialize() -> void:
 				worst_mm = maxf(worst_mm, mm)
 				sum_mm += mm
 				worst_turn = maxf(worst_turn, _quat(lib.seen, o).angle_to(_quat(lib.then, o)))
+				var d := Vector3(lib.seen[o] - lib.then[o], lib.seen[o + 1] - lib.then[o + 1], lib.seen[o + 2] - lib.then[o + 2])
+				var bs := Basis(_quat(lib.seen, o))
+				var bt := Basis(_quat(lib.then, o))
+				for axis in AXES:
+					var star: float = (d + (bs * axis - bt * axis) * ARM).length() * 1000.0
+					worst_star = maxf(worst_star, star)
+					sum_star += star
 				compared += 1
 	var drawn: int = lib.has.count(true)
 	var refused: int = lib.refused
 	var share: float = lib.usec / float(maxi(ticks_done, 1)) / TICK_USEC
 	print("BODY control=%s clips=%s ticks=%d parts_drawn=%d frames_taken=%d frames_refused=%d" % [control if control != "" else "none", ",".join(clips), ticks_done, drawn, lib.taken, refused])
-	print("LEDGER parts_drawn=%d err_max_mm=%.3f err_mean_mm=%.3f turn_max_mrad=%.2f honest_refused=%d tick_share=%.3f" % [drawn, worst_mm, sum_mm / maxi(compared, 1), worst_turn * 1000.0, refused if control == "" else 0, share])
+	print("LEDGER parts_drawn=%d err_max_mm=%.3f err_mean_mm=%.3f turn_max_mrad=%.2f star_max_mm=%.3f star_mean_mm=%.3f honest_refused=%d tick_share=%.3f" % [drawn, worst_mm, sum_mm / maxi(compared, 1), worst_turn * 1000.0, worst_star, sum_star / maxi(compared * 6, 1), refused if control == "" else 0, share])
 	if compared == 0 or drawn != 21:
 		_end("RESULT: FAIL %d of 21 parts were drawn" % drawn, 1)
 		return

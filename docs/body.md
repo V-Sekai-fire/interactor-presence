@@ -77,6 +77,7 @@ them, and its error is a different thing and far larger; see the next section.
 | Largest distance of a part from where the sender's was 12 ticks before | 9.09 mm |
 | Mean distance | 0.21 mm |
 | Largest difference of a part's rotation | 185 milliradians, about 10.6 degrees |
+| Largest and mean distance between the points of a part's rotation star | 14.6 mm and 0.29 mm |
 | Share of a tick for the codec, router, observers, curve and second follower | 0.030 |
 
 The share of a tick leaves out the sender's own physics, which is the same with or without a
@@ -114,6 +115,15 @@ Four worlds and the judgement of four parties. A rate for rotation.
 The stretch and the stilt that make the two skeletons coincide, so the second ANNY has the same
 faults against the muscle skeleton that the first has.
 
+## The rotation star
+
+A part's rotation is hard to judge as an angle and easy to judge as points. The rotation star of
+`contract-rotation-star` is a frame as 7 points: its origin and the ends of its six axes. The
+gate takes each drawn part's star with arms of 5 cm, sets it against the sender's star of 12
+ticks before, and reports the largest and the mean distance between matching points. A wrong
+rotation moves six of the seven points, so the star's error holds position and rotation in one
+number of millimetres.
+
 ## The video
 
 `tests/body_movie.gd` is not a gate. It runs the same pipeline as the gate, through
@@ -121,7 +131,22 @@ faults against the muscle skeleton that the first has.
 
     godot --path <muscle course> --write-movie <out.mkv> --fixed-fps 32 -s <here>/tests/body_movie.gd -- <here> <mujoco.elf> <anny_base.glb> <clips dir> [--control=swap|axes|flip]
 
-The sender is on the left with orange dots on its 21 bodies. The second avatar stands 1.6 m to
-the side, with blue dots where the viewer draws each part, 12 ticks behind. The caption shows the
-largest distance in the frame and the frames refused. Each clip is seen from 8 Hammersley orbit
-views. Four recordings were made, the real run and one for each control, and their files differ.
+It plays walk, idle, walk_back and run, 858 frames, each clip from 8 Hammersley orbit views.
+
+- The sender is on the left and the second avatar 1.6 m to its side.
+- Each of the 21 parts is drawn on its own body as a rotation star: the origin in orange on the
+  sender and blue on the copy, and the ends of the axes 5 cm out, X red, Y green and Z blue.
+- The floor is the plane geom of the physics model, read from `mjc_geom_table`, and the green
+  shapes are the model's other colliding geoms, 19 in all. They are drawn see-through and without
+  a depth test, so a view from below the floor still shows the bodies.
+- Yellow dots are the contacts `mjc_contacts` reports between the body and that floor in the
+  pose of the frame. The engine finds the body on its floor in 844 of the 858 frames.
+- The caption is in a strip under the picture and covers nothing.
+
+The floor is real in that it is the physics engine's own and the engine finds the body touching
+it. It does not hold the body up in this run: the clip sets the pose at every tick and nothing is
+stepped, so a foot can sink into it or hang above it. A foot that the floor carries is the work of
+the feet rung.
+
+Four recordings are made each time, the real run and one for each control, and their files
+differ.
