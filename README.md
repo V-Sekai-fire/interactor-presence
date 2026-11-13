@@ -52,7 +52,8 @@ need.
 ## Documentation
 
 `docs/wire.md` describes the frames, every call of the two guests and the verdict codes.
-`docs/gates.md` describes each gate and each control. The source keeps its comments under 3% of
+`docs/gates.md` describes each gate and each control. `docs/replica.md` describes shared objects
+as four replicas. `docs/frame-sizes.md` holds the measured size of a compressed frame. The source keeps its comments under 3% of
 its lines, which `tools/comment_density.exs` checks, so these two pages are where the
 explanation is.
 

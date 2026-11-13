@@ -13,6 +13,9 @@ MUJOCO_ELF=<interactor-mujoco-sandbox-demo>/project/plans/mujoco.double.elf \
 elixir tools/gates.exs
 ```
 
+`tools/frame_sizes.exs --self-test <work dir>` is the control of the frame size tool; see
+`docs/frame-sizes.md`.
+
 `tools/comment_density.exs <files>` fails when comments are more than 3% of a file's lines.
 
 ## `tests/proof_gate.gd -- <packet_golden.csv> [--control=flip]`
