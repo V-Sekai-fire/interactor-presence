@@ -86,6 +86,12 @@ Curve playback between sends, on synthetic control points: the error against the
 bound at 6, 8 and 16 ticks, and the largest move in a tick after one, two and three lost sends.
 The controls are `snap` and `novel`. See `docs/curve.md`.
 
+## `tests/packets_gate.gd -- <packet_golden_full.csv> [--control=<name>]` and `tools/body.exs`
+
+The Packet codec against the contract, and one real body sent from one world to another. Both are
+in `docs/body.md`. `tools/body.exs` needs the muscle course, the physics guest, the baked avatar
+and the clips, which it takes from `MUSCLE_COURSE`, `MUJOCO_ELF`, `ANNY_GLB` and `CLIPS`.
+
 ## `tests/replica_gate.gd`
 
 See `docs/replica.md`.

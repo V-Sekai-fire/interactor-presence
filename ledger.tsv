@@ -1,3 +1,8 @@
 rung	date	change	number	before	after	end	note
 0	2026-11-13	a half opens 5 ticks after the frame it last took	honest frames refused of 25,602 from clients with drifting clocks	1894	0	0	zone_clock_check.c of the feed server; fixed sequence
 0	2026-11-13	a half opens 5 ticks after the frame it last took	honest frames refused on real sockets, four client threads	7 of 320	0 of 960	0	zone_net_check.c; this Mac; first run against three runs
+1	2026-11-13	one body crosses the wire: packets.sgd, two worlds in one process	parts of a body the viewer drew	0	21	21	tests/body_gate.gd on walk and idle, 894 ticks
+1	2026-11-13	one body crosses the wire	largest distance of a drawn part from the sender's 12 ticks before, mm	none	9.09		first line for bodies; mean 0.21 mm
+1	2026-11-13	one body crosses the wire	largest difference of a drawn part's rotation, milliradians	none	185		rotation has no rate on the wire
+1	2026-11-13	one body crosses the wire	share of a tick for codec, router, observers, curve and second follower	none	0.030	0.8 for the whole tick	interpreted tier, this Mac; leaves out the sender's physics
+1	2026-11-13	positions from a whole-number origin	largest error of a position 8 billion km from zero, micrometres	1230	0.82	under 17, a hair	tests/packets_gate.gd; before is the float control

@@ -6,6 +6,7 @@ defmodule Gates do
     {"tests/byz_gate.gd", ["--ticks=1920"],
      ~w(alter split swap decode stale halves size header leak halftag sametick fifo) |> Enum.map(&"--control=#{&1}")},
     {"tests/curve_gate.gd", [], ["--control=snap", "--control=novel"]},
+    {"tests/packets_gate.gd", [:golden_full], ["--control=flip", "--control=axes", "--control=twist"]},
     {"tests/router_trace.gd", [:trace, "--ticks=210"], ~w(flip flood silent order window) |> Enum.map(&"--control=#{&1}")}
   ]
   @timeout_ms 600_000
@@ -13,16 +14,17 @@ defmodule Gates do
   def main do
     godot = System.get_env("GODOT") || fail("set GODOT to the double-precision editor")
     golden = System.get_env("PACKET_GOLDEN")
+    golden_full = golden && String.replace(golden, "packet_golden.csv", "packet_golden_full.csv")
     mujoco = System.get_env("MUJOCO_ELF")
     trace = Path.join(System.tmp_dir!(), "router.trace")
 
     results =
       for {script, base, controls} <- @gates, run <- [nil | controls] do
-        if (:golden in base and golden == nil) or (:mujoco in base and mujoco == nil) do
+        if ((:golden in base or :golden_full in base) and golden == nil) or (:mujoco in base and mujoco == nil) do
           IO.puts("SKIP #{script}: set PACKET_GOLDEN and MUJOCO_ELF to run it")
           :skip
         else
-          args = Enum.map(base, fn :golden -> golden; :mujoco -> mujoco; :trace -> trace; a -> a end) ++ List.wrap(run)
+          args = Enum.map(base, fn :golden -> golden; :golden_full -> golden_full; :mujoco -> mujoco; :trace -> trace; a -> a end) ++ List.wrap(run)
           out = engine(godot, ["--headless", "--path", ".", "-s", script, "--" | args])
           verdict = verdict(out, run)
           IO.puts("#{if verdict == :ok, do: "ok  ", else: "BAD "} #{script} #{Enum.join(args, " ")}: #{last_result(out)}")

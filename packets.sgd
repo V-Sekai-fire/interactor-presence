@@ -1,0 +1,117 @@
+const SIZE: int = 100
+const PARTS: int = 21
+const BASE: int = 2000000
+const UM: float = 1000000.0
+const V_MAX: float = 500000.0
+const A_MAX: float = 1000000.0
+const SWING: float = 32767.0 / PI
+const TWIST: float = 65536.0 / TAU
+
+
+func raw(ints: PackedInt64Array, payload: PackedByteArray) -> PackedByteArray:
+	var b: PackedByteArray = PackedByteArray()
+	if ints.size() != 16 or payload.size() > 40:
+		return b
+	b.resize(SIZE)
+	b.encode_u32(0, ints[0])
+	for i in 3:
+		b.encode_s64(4 + i * 8, ints[1 + i])
+		b.encode_s16(28 + i * 2, ints[4 + i])
+		b.encode_s16(34 + i * 2, ints[7 + i])
+		b.encode_s16(52 + i * 2, ints[13 + i])
+	b.encode_u32(40, ints[10])
+	b.encode_u32(44, ints[11])
+	b.encode_u32(48, ints[12])
+	for i in payload.size():
+		b[58 + i] = payload[i]
+	return b
+
+
+func fields(b: PackedByteArray) -> PackedInt64Array:
+	var out: PackedInt64Array = PackedInt64Array()
+	if b.size() != SIZE:
+		return out
+	out.resize(16)
+	out[0] = b.decode_u32(0)
+	for i in 3:
+		out[1 + i] = b.decode_s64(4 + i * 8)
+		out[4 + i] = b.decode_s16(28 + i * 2)
+		out[7 + i] = b.decode_s16(34 + i * 2)
+		out[13 + i] = b.decode_s16(52 + i * 2)
+	out[10] = b.decode_u32(40)
+	out[11] = b.decode_u32(44)
+	out[12] = b.decode_u32(48)
+	return out
+
+
+func rot_codes(x: float, y: float, z: float, w: float) -> PackedInt64Array:
+	var tn: float = sqrt(y * y + w * w)
+	var ty: float = 0.0
+	var tw: float = 1.0
+	if tn >= 1e-12:
+		ty = y / tn
+		tw = w / tn
+	var sx: float = x * tw + z * ty
+	var sy: float = -w * ty + y * tw
+	var sz: float = z * tw - x * ty
+	var sw: float = w * tw + y * ty
+	if sw < 0.0 or (sw == 0.0 and (sx < 0.0 or (sx == 0.0 and sz < 0.0))):
+		sx = -sx
+		sy = -sy
+		sz = -sz
+		sw = -sw
+	var m: float = sqrt(sx * sx + sz * sz)
+	var k: float = 2.0
+	if m >= 1e-9:
+		k = 2.0 * atan2(m, sw) / m
+	var twist: int = int(round(2.0 * atan2(ty, tw) * TWIST))
+	twist = posmod(twist + 32768, 65536) - 32768
+	return PackedInt64Array([int(round(k * sx * SWING)), int(round(k * sz * SWING)), twist])
+
+
+func rot_quat(cx: int, cz: int, ct: int) -> PackedFloat64Array:
+	var rx: float = float(cx) / SWING
+	var rz: float = float(cz) / SWING
+	var phi: float = sqrt(rx * rx + rz * rz)
+	var k: float = 0.5
+	if phi >= 1e-9:
+		k = sin(phi / 2.0) / phi
+	var ax: float = k * rx
+	var az: float = k * rz
+	var aw: float = cos(phi / 2.0)
+	var theta: float = float(ct) / TWIST
+	var by: float = sin(theta / 2.0)
+	var bw: float = cos(theta / 2.0)
+	return PackedFloat64Array([aw * 0.0 + ax * bw - az * by, aw * by + az * 0.0, az * bw + ax * by, aw * bw])
+
+
+func _code(v: float, full: float, up: bool) -> int:
+	var c: float = absf(v) * 32767.0 / full
+	var m: int = mini(32767, int(ceil(c)) if up else int(round(c)))
+	return m if v >= 0.0 else -m
+
+
+func body(person: int, part: int, tick: int, origin: PackedInt64Array, place: PackedFloat64Array, motion: PackedFloat64Array) -> PackedByteArray:
+	if part < 0 or part >= PARTS or origin.size() != 3 or place.size() != 7 or motion.size() != 6:
+		return PackedByteArray()
+	var r: PackedInt64Array = rot_codes(-place[5], place[6], -place[4], place[3])
+	var ints: PackedInt64Array = PackedInt64Array([
+		BASE + person * PARTS + part,
+		origin[0] + int(round(-place[1] * UM)), origin[1] + int(round(place[2] * UM)), origin[2] + int(round(-place[0] * UM)),
+		_code(-motion[1] * UM, V_MAX, false), _code(motion[2] * UM, V_MAX, false), _code(-motion[0] * UM, V_MAX, false),
+		_code(-motion[4] * UM, A_MAX, true), _code(motion[5] * UM, A_MAX, true), _code(-motion[3] * UM, A_MAX, true),
+		(tick << 8) & 0xFFFFFFFF, (1 << 24) | (person & 0xFFFF), part, r[0], r[1], r[2]])
+	return raw(ints, PackedByteArray())
+
+
+func placed(b: PackedByteArray, origin: PackedInt64Array) -> PackedFloat64Array:
+	var f: PackedInt64Array = fields(b)
+	if f.size() != 16 or origin.size() != 3:
+		return PackedFloat64Array()
+	var q: PackedFloat64Array = rot_quat(f[13], f[14], f[15])
+	return PackedFloat64Array([
+		float(f[0]), float(f[10] >> 8),
+		-float(f[3] - origin[2]) / UM, -float(f[1] - origin[0]) / UM, float(f[2] - origin[1]) / UM,
+		q[3], -q[2], -q[0], q[1],
+		-float(f[6]) * V_MAX / 32767.0 / UM, -float(f[4]) * V_MAX / 32767.0 / UM, float(f[5]) * V_MAX / 32767.0 / UM,
+		-float(f[9]) * A_MAX / 32767.0 / UM, -float(f[7]) * A_MAX / 32767.0 / UM, float(f[8]) * A_MAX / 32767.0 / UM])
