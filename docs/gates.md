@@ -62,3 +62,11 @@ Measured on macOS arm64 with the interpreted tier: the router's pass with the wi
 ## `tests/replica_gate.gd`
 
 See `docs/replica.md`.
+
+## `tests/router_trace.gd -- <out file> [--ticks=N] [--control=<name>]`
+
+Writes every call to `router.sgd` and every answer of one scripted scenario to a binary file, for
+a relay in another language to replay. It passes when the scenario reached all 16 of its items.
+The controls `flip`, `flood`, `silent` and `order` each replace one line of the router; the script
+runs the true router beside the planted one and names the first record where they differ. The
+file format, the scenario and the controls are in `docs/router-trace.md`.
