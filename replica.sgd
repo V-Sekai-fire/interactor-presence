@@ -1,0 +1,117 @@
+const SLOTS: int = 4
+const PACKET_BYTES: int = 100
+const OBJECT_GID: int = 1000001
+const OBJECT_CLASS: int = 2
+const OFF_HLC: int = 40
+const OFF_CLASS_OWNER: int = 44
+const OFF_PAYLOAD: int = 58
+const AT_PROPOSAL: int = 58
+const AT_SEEN: int = 62
+const AT_DIGEST: int = 78
+const AT_SEND: int = 86
+
+const VALID: int = 0
+const INCOMPLETE: int = 1
+const ZONE: int = 4
+const ME: int = 5
+const REPLICA: int = 10
+const INPUT_SPLIT: int = 40
+
+var me: int = 0
+var got: Array = []
+var got_ok: Array = [false, false, false, false]
+var seen: Array = [0, 0, 0, 0]
+
+
+func setup(slot: int) -> bool:
+	me = slot
+	got = []
+	for i in SLOTS:
+		got.append(PackedByteArray())
+	got_ok = [false, false, false, false]
+	seen = [0, 0, 0, 0]
+	return true
+
+
+func state(send: int, proposal: int, digest: int) -> PackedByteArray:
+	var p: PackedByteArray = PackedByteArray()
+	p.resize(PACKET_BYTES)
+	p.encode_u32(0, OBJECT_GID)
+	p.encode_u32(OFF_HLC, (send << 8) & 0xFFFFFFFF)
+	p.encode_u32(OFF_CLASS_OWNER, (OBJECT_CLASS << 24) | me)
+	p.encode_s32(AT_PROPOSAL, proposal)
+	for j in SLOTS:
+		p.encode_s32(AT_SEEN + j * 4, seen[j])
+	p.encode_s64(AT_DIGEST, digest)
+	p.encode_u32(AT_SEND, send)
+	got[me] = p
+	got_ok[me] = true
+	return p
+
+
+func take(slot: int, packet: PackedByteArray) -> bool:
+	got_ok[slot] = false
+	if slot < 0 or slot >= SLOTS or slot == me:
+		return false
+	if packet.size() != PACKET_BYTES or packet.decode_u32(0) != OBJECT_GID:
+		return false
+	if packet.decode_u32(OFF_CLASS_OWNER) != ((OBJECT_CLASS << 24) | slot):
+		return false
+	got[slot] = packet
+	got_ok[slot] = true
+	return true
+
+
+func close(send: int) -> PackedInt32Array:
+	var out: PackedInt32Array = PackedInt32Array([0, 0, 0, 0, INCOMPLETE, VALID])
+	for k in SLOTS:
+		if not got_ok[k]:
+			return out
+		var theirs: PackedByteArray = got[k]
+		if theirs.decode_u32(AT_SEND) != send:
+			return out
+	for j in SLOTS:
+		var reports: Array = []
+		for k in SLOTS:
+			var from: PackedByteArray = got[k]
+			reports.append(from.decode_s32(AT_SEEN + j * 4))
+		var chosen: int = 0
+		var any: bool = false
+		for a in SLOTS:
+			if reports[a] != 0:
+				any = true
+			var same: int = 0
+			for b in SLOTS:
+				if reports[b] == reports[a]:
+					same += 1
+			if same >= 3:
+				chosen = reports[a]
+		out[j] = chosen
+		if any and chosen == 0:
+			out[5] = INPUT_SPLIT + j
+	var digests: Array = []
+	for k in SLOTS:
+		var from: PackedByteArray = got[k]
+		digests.append(from.decode_s64(AT_DIGEST))
+	var verdict: int = ZONE
+	for a in SLOTS:
+		var same: int = 0
+		for b in SLOTS:
+			if digests[b] == digests[a]:
+				same += 1
+		if same == 4:
+			verdict = VALID
+		elif same == 3:
+			for b in SLOTS:
+				if digests[b] != digests[a]:
+					if b == me:
+						verdict = ME
+					else:
+						verdict = REPLICA + b
+	out[4] = verdict
+	for j in SLOTS:
+		var from: PackedByteArray = got[j]
+		seen[j] = from.decode_s32(AT_PROPOSAL)
+	for k in SLOTS:
+		got_ok[k] = false
+	return out

@@ -9,6 +9,7 @@ exits 0. A run that outlives 10 minutes is killed and reads as no result.
 ```sh
 GODOT=<double-precision editor with the sandbox built in> \
 PACKET_GOLDEN=<contract-entity-packet>/packet_golden.csv \
+MUJOCO_ELF=<interactor-mujoco-sandbox-demo>/project/plans/mujoco.double.elf \
 elixir tools/gates.exs
 ```
 
@@ -54,3 +55,7 @@ sends, then the party the honest majority names.
 
 Measured on macOS arm64 with the interpreted tier: the router's pass with the wire takes about
 46 microseconds a tick, and the four observers together about 0.8 ms a send.
+
+## `tests/replica_gate.gd`
+
+See `docs/replica.md`.

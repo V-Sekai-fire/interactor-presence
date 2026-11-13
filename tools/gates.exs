@@ -2,6 +2,7 @@ defmodule Gates do
   @gates [
     {"tests/proof_gate.gd", [:golden], ["--control=flip"]},
     {"tests/hash_proof.gd", [], ["--control=flip"]},
+    {"tests/replica_gate.gd", [:mujoco, "--sends=400"], ["--control=altered", "--control=split", "--control=badstate"]},
     {"tests/byz_gate.gd", ["--ticks=1920"],
      ~w(alter split swap decode stale halves size header) |> Enum.map(&"--control=#{&1}")}
   ]
@@ -10,14 +11,15 @@ defmodule Gates do
   def main do
     godot = System.get_env("GODOT") || fail("set GODOT to the double-precision editor")
     golden = System.get_env("PACKET_GOLDEN")
+    mujoco = System.get_env("MUJOCO_ELF")
 
     results =
       for {script, base, controls} <- @gates, run <- [nil | controls] do
-        if :golden in base and golden == nil do
-          IO.puts("SKIP #{script}: set PACKET_GOLDEN to packet_golden.csv of contract-entity-packet")
+        if (:golden in base and golden == nil) or (:mujoco in base and mujoco == nil) do
+          IO.puts("SKIP #{script}: set PACKET_GOLDEN and MUJOCO_ELF to run it")
           :skip
         else
-          args = Enum.map(base, fn :golden -> golden; a -> a end) ++ List.wrap(run)
+          args = Enum.map(base, fn :golden -> golden; :mujoco -> mujoco; a -> a end) ++ List.wrap(run)
           out = engine(godot, ["--headless", "--path", ".", "-s", script, "--" | args])
           verdict = verdict(out, run)
           IO.puts("#{if verdict == :ok, do: "ok  ", else: "BAD "} #{script} #{Enum.join(args, " ")}: #{last_result(out)}")
