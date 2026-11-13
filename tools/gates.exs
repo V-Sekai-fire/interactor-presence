@@ -6,7 +6,7 @@ defmodule Gates do
     {"tests/byz_gate.gd", ["--ticks=1920"],
      ~w(alter split swap decode stale halves size header leak halftag sametick fifo) |> Enum.map(&"--control=#{&1}")},
     {"tests/curve_gate.gd", [], ["--control=snap", "--control=novel"]},
-    {"tests/router_trace.gd", [:trace, "--ticks=210"], ~w(flip flood silent order phase) |> Enum.map(&"--control=#{&1}")}
+    {"tests/router_trace.gd", [:trace, "--ticks=210"], ~w(flip flood silent order window) |> Enum.map(&"--control=#{&1}")}
   ]
   @timeout_ms 600_000
 

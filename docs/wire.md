@@ -42,9 +42,9 @@ The zone. It reads no byte of a frame.
 | `join(person) -> int` | the slot the person holds, or -1 when all four are taken. A person who is already seated gets the same slot |
 | `leave(person) -> bool` | frees the slot and blanks its frames |
 | `person_at(slot) -> int` | the person in a slot, or -1 |
-| `put(slot, half, frame) -> bool` | stores one frame. Only the first frame of a half in a send interval is taken; any other is counted in `unread_count()` and not read, so a flood makes the router do less |
+| `put(slot, half, frame) -> bool` | stores one frame. A half is open again 5 ticks after the frame it last took (`OPEN_TICKS`), counted on the relay's own clock from that frame and from nothing else. A frame that comes sooner is counted in `unread_count` and not stored, so a flood makes the router do less |
 | `frame(viewer, k) -> PackedByteArray` | frame `k` of 6 for a viewer: the two halves of each other slot, in slot order. An empty slot gives a blank frame of 1,200 zero bytes |
-| `tick() -> int` | the pass that runs at every tick. It visits all four slots whoever is present, opens the next send interval every 6 ticks, and empties a slot that has been silent for 192 ticks (3 s) |
+| `tick() -> int` | the pass that runs at every tick. It visits all four slots whoever is present and empties a slot that has been silent for more than 192 ticks |
 
 ## `observer.sgd`
 

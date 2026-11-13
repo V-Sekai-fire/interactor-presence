@@ -1,0 +1,3 @@
+rung	date	change	number	before	after	end	note
+0	2026-11-13	a half opens 5 ticks after the frame it last took	honest frames refused of 25,602 from clients with drifting clocks	1894	0	0	zone_clock_check.c of the feed server; fixed sequence
+0	2026-11-13	a half opens 5 ticks after the frame it last took	honest frames refused on real sockets, four client threads	7 of 320	0 of 960	0	zone_net_check.c; this Mac; first run against three runs

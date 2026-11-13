@@ -34,7 +34,8 @@ the frame the guest sees.
 Four scripted clients, in slots 0 to 3, each send 21 synthetic Packets every 6 ticks. They do not
 send on the same tick: slot `s` sends on the ticks where `t % 6` is `PHASE[s]`, and `PHASE` is
 0, 1, 3, 4, so no two senders share a tick and no tick has more than two frames for one viewer. The
-router opens a slot for its next pair of frames on that same tick of the six. The first
+router does not ask when a sender sends: a half is open again 5 ticks after the frame it last
+took, on the router's own clock. The first
 half of a run stands still and the second half walks. Without `--ticks` a run is 19,200 ticks,
 5 minutes of the clock.
 
@@ -93,6 +94,6 @@ See `docs/replica.md`.
 
 Writes every call to `router.sgd` and every answer of one scripted scenario to a binary file, for
 a relay in another language to replay. It passes when the scenario reached all 17 of its items.
-The controls `flip`, `flood`, `silent`, `order` and `phase` each replace one line of the router; the script
+The controls `flip`, `flood`, `silent`, `order` and `window` each replace one line of the router; the script
 runs the true router beside the planted one and names the first record where they differ. The
 file format, the scenario and the controls are in `docs/router-trace.md`.

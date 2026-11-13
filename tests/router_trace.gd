@@ -9,15 +9,15 @@ const ITEMS := [
 	"four joins", "fifth join refused", "repeat join", "flood counted and not taken",
 	"flood on a later tick", "bad slot and bad half refused", "other lengths kept",
 	"leave", "put to an empty slot refused", "person -1 is the empty mark",
-	"slot taken again", "taken mark outlives a leave", "interval starts on the slot own tick", "viewer outside 0 to 3",
+	"slot taken again", "taken mark outlives a leave", "a half opens five ticks after its frame", "viewer outside 0 to 3",
 	"silent member emptied after 192", "put to a slot emptied by silence refused",
 	"emptied slot taken again",
 ]
 const PLANTS := {
 	"flip": ["\treturn frames[slot * 2 + half]\n", "\tvar out: PackedByteArray = frames[slot * 2 + half].duplicate()\n\tif slot == 1 and half == 0 and out.size() > 777:\n\t\tout[777] = out[777] ^ 1\n\treturn out\n"],
-	"flood": ["\tif taken[at]:\n", "\tif taken[at] and at < 0:\n"],
+	"flood": ["\tif now - took[at] < OPEN_TICKS:\n", "\tif now - took[at] < OPEN_TICKS and at < 0:\n"],
 	"silent": ["\t\tif people[s] != -1 and now - heard[s] > SILENT_TICKS:\n", "\t\tif people[s] != -1 and now - heard[s] >= SILENT_TICKS:\n"],
-	"phase": ["\t\tif now % SEND_TICKS == PHASE[s]:\n", "\t\tif now % SEND_TICKS == 0:\n"],
+	"window": ["const OPEN_TICKS: int = 5\n", "const OPEN_TICKS: int = 6\n"],
 	"order": ["\t\tslot = other + 1\n", "\t\tslot = 3 - other\n"],
 }
 
@@ -191,10 +191,12 @@ func _before(t: int, sending: Array) -> void:
 		_saw("flood on a later tick", [_put(2, 1, _bytes(2, 1, t, 1, 1200)), _unread()] == [false, before + 1])
 	if t == 12:
 		sending[3] = false
-	if t == 19:
+	if t == 22:
 		var before := _unread()
-		var fresh := _put(1, 0, _bytes(1, 0, t, 1, 1200))
-		_saw("interval starts on the slot own tick", [fresh, _put(1, 0, _bytes(1, 0, t, 2, 1200)), _unread()] == [true, false, before + 1])
+		seen["early"] = [_put(1, 0, _bytes(1, 0, t, 1, 1200)), _unread()] == [false, before + 1]
+	if t == 23:
+		var before := _unread()
+		_saw("a half opens five ticks after its frame", seen.get("early", false) and [_put(1, 0, _bytes(1, 0, t, 1, 1200)), _unread()] == [true, before])
 	if t == 50:
 		_saw("slot taken again", [_join(55), _at(1)] == [1, 55])
 		_reads(2)
