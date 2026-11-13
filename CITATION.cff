@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "interactor-presence"
+abstract: "The presence core of the fabric as sandbox guests: a zone that only routes, and four observers that check what it relays."
+type: software
+authors:
+  - family-names: "Lee"
+    given-names: "K. S. Ernest (iFire)"
+license: MIT
+repository-code: "https://github.com/V-Sekai-fire/interactor-presence"
+date-released: "2026-11-13"
