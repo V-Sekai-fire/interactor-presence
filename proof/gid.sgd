@@ -1,0 +1,14 @@
+func nop(pkt: PackedByteArray) -> int:
+	return 0
+
+
+func gid_decode(pkt: PackedByteArray) -> int:
+	return pkt.decode_u32(0)
+
+
+func gid_bytes(pkt: PackedByteArray) -> int:
+	var b0: int = pkt[0]
+	var b1: int = pkt[1]
+	var b2: int = pkt[2]
+	var b3: int = pkt[3]
+	return b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)
