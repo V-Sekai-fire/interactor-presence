@@ -1,5 +1,7 @@
 # interactor-presence
 
+**This repository is archived.** On 2026-11-13 its parts became repositories of their own in `V-Sekai-fire`, each starting anew: `interactor-packets-guest`, `interactor-zone-router-guest`, `interactor-observer-guest`, `interactor-curve-guest`, `interactor-replica-guest` and `interactor-presence-gates`, which holds the gates that join them, the ledger and the documentation. The history here is kept for reading.
+
 The presence core of the fabric as sandbox guests in SafeGDScript: a zone that only routes, and
 the observers that check what it relays.
 
