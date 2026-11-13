@@ -6,8 +6,9 @@ This page holds what the source files do not say in comments. The code keeps its
 ## Frames and Packets
 
 A Packet is the 100-byte entity packet of `contract-entity-packet`, unchanged. The offsets the
-guests use are `gid` at 0, `hlc` at 40 (a 24-bit tick above an 8-bit counter) and the 42-byte
-`payload` at 58.
+guests use are `gid` at 0, `hlc` at 40 (a 24-bit tick above an 8-bit counter) and the 40-byte
+`payload` at 58. Bytes 34 to 39 are the acceleration and bytes 98 and 99 are reserved and zero.
+The tables below use payload bytes 0 to 35, so they fit.
 
 A frame is 12 Packets, 1,200 bytes. A person is 21 Packets, one for each body part, with
 `gid = 2,000,000 + person * 21 + part`. They travel as two frames:
